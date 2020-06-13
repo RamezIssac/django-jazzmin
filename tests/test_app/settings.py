@@ -29,6 +29,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'tests.test_app.polls.middleware.CleanupMiddleware',
 ]
 
 if django.VERSION < (2, 0):
@@ -184,3 +185,6 @@ if not os.getenv('FAIL_INVALID_TEMPLATE_VARS'):
     ])
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
     DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda _: True}
+
+# Reset the data on 10% of requests, to keep it clean
+PERIODIC_RESET = True if os.getenv('PERIODIC_RESET') else False
