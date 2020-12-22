@@ -1,6 +1,7 @@
 {% load jazzmin %}
 {% if card %}
 <div class="card {{ fieldset.classes|cut:"collapse" }}">
+    {% if card_header and fieldset.name %}<div class="card-header">{{ fieldset.name }}</div>{%endif%}
     <div class="p-5{% if fieldset.name %} card-body{% endif %}">
 {% endif %}
 
@@ -9,7 +10,7 @@
         <div class="row">
             {% for field in line %}
                 <label class="{% if not line.fields|length_is:'1' and forloop.counter != 1 %}col-auto {% else %}col-sm-2 {% endif %}text-left">
-                    {{ field.field.label }}
+                    {{ field.field.label|capfirst }}
                     {% if field.field.field.required %}
                     <span class="text-red">* </span>
                     {% endif %}

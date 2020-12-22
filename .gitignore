@@ -5,11 +5,15 @@
 .idea
 .tox
 .venv
+.env
+.vscode
+/diffs
 /build
 /dist
-/test-reports
+*.reports
 __pycache__
 _resource
 admin_templates
+admindocs_templates
 *.sqlite3
 tests/test_app/static/
