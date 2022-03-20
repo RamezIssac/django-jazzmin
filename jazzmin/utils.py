@@ -1,12 +1,12 @@
 import logging
-from typing import List, Union, Dict, Set, Callable
+from typing import List, Union, Dict, Set, Callable, Any
 from urllib.parse import urlencode
 
 from django.apps import apps
 from django.contrib.admin import ListFilter
 from django.contrib.admin.helpers import AdminForm
 from django.contrib.auth.models import AbstractUser
-from django.db.models.base import ModelBase
+from django.db.models.base import ModelBase, Model
 from django.db.models.options import Options
 from django.utils.translation import gettext
 
@@ -33,7 +33,7 @@ def order_with_respect_to(original: List, reference: List, getter: Callable = la
     return [y for x, y in sorted(zip(ranking, original), key=lambda x: x[0])]
 
 
-def get_admin_url(instance: Union[str, ModelBase], admin_site: str = "admin", **kwargs: str) -> str:
+def get_admin_url(instance: Any, admin_site: str = "admin", from_app: bool = False, **kwargs: str) -> str:
     """
     Return the admin URL for the given instance, model class or <app>.<model> string
     """
@@ -67,7 +67,9 @@ def get_admin_url(instance: Union[str, ModelBase], admin_site: str = "admin", **
             )
 
     except (NoReverseMatch, ValueError):
-        logger.warning(gettext("Could not reverse url from {instance}".format(instance=instance)))
+        # If we are not walking through the models within an app, let the user know this url cant be reversed
+        if not from_app:
+            logger.warning(gettext("Could not reverse url from {instance}".format(instance=instance)))
 
     if kwargs:
         url += "?{params}".format(params=urlencode(kwargs))
@@ -104,8 +106,8 @@ def get_model_meta(model_str: str) -> Union[None, Options]:
     """
     try:
         app, model = model_str.split(".")
-        Model = apps.get_registered_model(app, model)
-        return Model._meta
+        model_klass: Model = apps.get_registered_model(app, model)
+        return model_klass._meta
     except (ValueError, LookupError):
         return None
 
@@ -120,7 +122,7 @@ def get_app_admin_urls(app: str, admin_site: str = "admin") -> List[Dict]:
 
     models = []
     for model in apps.app_configs[app].get_models():
-        url = get_admin_url(model, admin_site=admin_site)
+        url = get_admin_url(model, admin_site=admin_site, from_app=True)
 
         # We have no admin class
         if url == "#":
@@ -146,12 +148,7 @@ def get_view_permissions(user: AbstractUser) -> Set[str]:
     lower_perms = []
     for perm in perms:
         app, perm_codename = perm.split(".")
-        lower_perms.append(
-            "{app}.{perm_codename}".format(
-                app=app,
-                perm_codename=perm_codename.lower(),
-            )
-        )
+        lower_perms.append("{app}.{perm_codename}".format(app=app, perm_codename=perm_codename.lower()))
     return {x.replace("view_", "") for x in lower_perms if "view" in x or "change" in x}
 
 
@@ -209,11 +206,7 @@ def make_menu(
         # App links
         elif "app" in link and allow_appmenus:
             children = [
-                {
-                    "name": child.get("verbose_name", child["name"]),
-                    "url": child["url"],
-                    "children": None,
-                }
+                {"name": child.get("verbose_name", child["name"]), "url": child["url"], "children": None}
                 for child in get_app_admin_urls(link["app"], admin_site=admin_site)
                 if child["model"] in model_permissions
             ]
@@ -237,3 +230,12 @@ def has_fieldsets_check(adminform: AdminForm) -> bool:
     if not fieldsets or (len(fieldsets) == 1 and fieldsets[0][0] is None):
         return False
     return True
+
+
+def attr(**kwargs) -> Callable:
+    def decorator(func: Callable):
+        for key, value in kwargs.items():
+            setattr(func, key, value)
+        return func
+
+    return decorator

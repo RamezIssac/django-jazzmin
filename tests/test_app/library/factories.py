@@ -1,10 +1,10 @@
-from datetime import timedelta, date
+from datetime import date, timedelta
 
 import factory
 from django.contrib.auth.models import Group, Permission, User
 from django.utils import timezone
 from factory.django import DjangoModelFactory
-from factory.fuzzy import FuzzyChoice, FuzzyDate
+from factory.fuzzy import FuzzyChoice, FuzzyDate, FuzzyInteger
 
 from .books.models import Author, Book, Genre
 from .loans.models import BookLoan, Library
@@ -82,7 +82,9 @@ class AuthorFactory(DjangoModelFactory):
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
     date_of_birth = FuzzyDate(date(1950, 1, 1), NOW.date() - timedelta(days=365))
-    date_of_death = factory.LazyAttribute(lambda x: x.date_of_birth.replace(year=NOW.year))
+    date_of_death = factory.LazyAttribute(
+        lambda x: x.date_of_birth.replace(year=NOW.year, day=min(28, x.date_of_birth.day))
+    )
 
     class Meta:
         model = Author
@@ -104,6 +106,8 @@ class BookFactory(DjangoModelFactory):
     summary = factory.Faker("sentence")
     isbn = "9780123456472"
     published_on = FuzzyDate(date(1950, 1, 1), date(1999, 1, 1))
+    last_print = FuzzyDate(date(2000, 1, 1), date(2020, 1, 1))
+    pages = FuzzyInteger(50, 1000)
 
     @factory.post_generation
     def genre(self, create, extracted, **kwargs):

@@ -1,30 +1,35 @@
 import copy
 import logging
-from typing import Dict
+from typing import Dict, Any
 
 from django.conf import settings
-from django.contrib.admin import AdminSite
 from django.templatetags.static import static
 
 from .utils import get_admin_url, get_model_meta
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SETTINGS = {
-    # title of the window
-    "site_title": AdminSite.site_title,
-    # Title on the brand, and the login screen (19 chars max)
-    "site_header": AdminSite.site_header,
-    # Relative path to logo for your site, used for favicon and brand on top left (must be present in static files)
+DEFAULT_SETTINGS: Dict[str, Any] = {
+    # title of the window (Will default to current_admin_site.site_title)
+    "site_title": None,
+    # Title on the login screen (19 chars max) (will default to current_admin_site.site_header)
+    "site_header": None,
+    # Title on the brand (19 chars max) (will default to current_admin_site.site_header)
+    "site_brand": None,
+    # Relative path to logo for your site, used for brand on top left (must be present in static files)
     "site_logo": "vendor/adminlte/img/AdminLTELogo.png",
+    # CSS classes that are applied to the logo
+    "site_logo_classes": "img-circle",
+    # Relative path to a favicon for your site, will default to site_logo if absent (ideally 32x32 px)
+    "site_icon": None,
     # Welcome text on the login screen
     "welcome_sign": "Welcome",
     # Copyright on the footer
     "copyright": "",
     # The model admin to search from the search bar, search bar omitted if excluded
     "search_model": None,
-    # Field name on user model that contains avatar image
-    "user_avatar": "avatar",
+    # Field name on user model that contains avatar ImageField/URLField/Charfield or a callable that receives the user
+    "user_avatar": None,
     ############
     # Top Menu #
     ############
@@ -50,13 +55,11 @@ DEFAULT_SETTINGS = {
     "order_with_respect_to": [],
     # Custom links to append to side menu app groups, keyed on app name
     "custom_links": {},
-    # Custom icons for side menu apps/models See https://fontawesome.com/icons?d=gallery&m=free
-    # for a list of icon classes
-    "icons": {
-        "auth": "fas fa-users-cog",
-        "auth.user": "fas fa-user",
-        "auth.Group": "fas fa-users",
-    },
+    # Custom icons for side menu apps/models See the link below
+    # https://fontawesome.com/icons?d=gallery&m=free&v=5.0.0,5.0.1,5.0.10,5.0.11,5.0.12,5.0.13,5.0.2,5.0.3,5.0.4,5.0.5,5.0.6,5.0.7,5.0.8,5.0.9,5.1.0,
+    # 5.1.1,5.2.0,5.3.0,5.3.1,5.4.0,5.4.1,5.4.2,5.13.0,5.12.0,5.11.2,5.11.1,5.10.0,5.9.0,5.8.2,5.8.1,5.7.2,5.7.1,5.7.0,5.6.3,5.5.0,5.4.2
+    # for the full list of 5.13.0 free icon classes
+    "icons": {"auth": "fas fa-users-cog", "auth.user": "fas fa-user", "auth.Group": "fas fa-users"},
     # Icons that are used when one is not manually specified
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
@@ -71,6 +74,8 @@ DEFAULT_SETTINGS = {
     # Relative paths to custom CSS/JS scripts (must be present in static files)
     "custom_css": None,
     "custom_js": None,
+    # Whether to link font from fonts.googleapis.com (use custom_css to supply font otherwise)
+    "use_google_fonts_cdn": True,
     # Whether to show the UI customizer on the sidebar
     "show_ui_builder": False,
     ###############
@@ -94,8 +99,7 @@ DEFAULT_SETTINGS = {
 # Use the UI builder to generate this #
 #######################################
 
-
-DEFAULT_UI_TWEAKS = {
+DEFAULT_UI_TWEAKS: Dict[str, Any] = {
     # Small text on the top navbar
     "navbar_small_text": False,
     # Small text on the footer
@@ -224,6 +228,9 @@ def get_settings() -> Dict:
     # Ensure icon model names and classes are lower case
     jazzmin_settings["icons"] = {x.lower(): y.lower() for x, y in jazzmin_settings.get("icons", {}).items()}
 
+    # Default the site icon using the site logo
+    jazzmin_settings["site_icon"] = jazzmin_settings["site_icon"] or jazzmin_settings["site_logo"]
+
     # ensure all model names are lower cased
     jazzmin_settings["changeform_format_overrides"] = {
         x.lower(): y.lower() for x, y in jazzmin_settings.get("changeform_format_overrides", {}).items()
@@ -282,19 +289,13 @@ def get_ui_tweaks() -> Dict:
     if theme in DARK_THEMES:
         theme_body_classes += " dark-mode"
 
-    return {
+    ret = {
         "raw": raw_tweaks,
         "theme": {"name": theme, "src": static(THEMES[theme])},
-        "dark_mode_theme": {"name": dark_mode_theme, "src": static(THEMES[theme])},
         "sidebar_classes": classes("sidebar", "sidebar_disable_expand"),
         "navbar_classes": classes("navbar", "no_navbar_border", "navbar_small_text"),
         "body_classes": classes(
-            "accent",
-            "body_small_text",
-            "navbar_fixed",
-            "footer_fixed",
-            "sidebar_fixed",
-            "layout_boxed",
+            "accent", "body_small_text", "navbar_fixed", "footer_fixed", "sidebar_fixed", "layout_boxed"
         )
         + theme_body_classes,
         "actions_classes": classes("actions_sticky_top"),
@@ -309,3 +310,8 @@ def get_ui_tweaks() -> Dict:
         "footer_classes": classes("footer_small_text"),
         "button_classes": tweaks["button_classes"],
     }
+
+    if dark_mode_theme:
+        ret["dark_mode_theme"] = {"name": dark_mode_theme, "src": static(THEMES[dark_mode_theme])}
+
+    return ret

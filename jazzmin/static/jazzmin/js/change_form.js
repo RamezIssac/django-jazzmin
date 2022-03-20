@@ -1,19 +1,19 @@
 (function($) {
     'use strict';
 
-    function fix_selector_height() {
-    $('.selector .selector-chosen').each(function () {
-        let selector_chosen = $(this);
-        let selector_available = selector_chosen.siblings('.selector-available');
+    function FixSelectorHeight() {
+        $('.selector .selector-chosen').each(function () {
+            let selector_chosen = $(this);
+            let selector_available = selector_chosen.siblings('.selector-available');
 
-        let selector_chosen_select = selector_chosen.find('select').first();
-        let selector_available_select = selector_available.find('select').first();
-        let selector_available_filter = selector_available.find('p.selector-filter').first();
+            let selector_chosen_select = selector_chosen.find('select').first();
+            let selector_available_select = selector_available.find('select').first();
+            let selector_available_filter = selector_available.find('p.selector-filter').first();
 
-        selector_chosen_select.height(selector_available_select.height() + selector_available_filter.outerHeight());
-        selector_chosen_select.css('border-top', selector_chosen_select.css('border-bottom'));
-    });
-}
+            selector_chosen_select.height(selector_available_select.height() + selector_available_filter.outerHeight());
+            selector_chosen_select.css('border-top', selector_chosen_select.css('border-bottom'));
+        });
+    }
 
     function handleCarousel($carousel) {
         const errors = $('.errorlist li', $carousel);
@@ -34,7 +34,9 @@
         // Update page hash/history on slide
         $carousel.on('slide.bs.carousel', function (e) {
 
-            fix_selector_height();
+            FixSelectorHeight();
+            // call resize in change view after tab switch
+            window.dispatchEvent(new Event('resize'));
 
             if (e.relatedTarget.dataset.hasOwnProperty("label")) {
                 $('.carousel-fieldset-label', $carousel).text(e.relatedTarget.dataset.label);
@@ -57,16 +59,17 @@
         if (errors.length) {
             const tabId = errors.eq(0).closest('.tab-pane').attr('id');
             $('a[href="#' + tabId + '"]').tab('show');
-
-            // If we have a tab hash, open that
         } else if (hash) {
+            // If we have a tab hash, open that
             $('a[href="' + hash + '"]', $tabs).tab('show');
         }
 
         // Change hash for page-reload
         $('a', $tabs).on('shown.bs.tab', function (e) {
 
-            fix_selector_height();
+            FixSelectorHeight();
+            // call resize in change view after tab switch
+            window.dispatchEvent(new Event('resize'));
 
             e.preventDefault();
             if (history.pushState) {
@@ -95,7 +98,9 @@
         // Change hash for page-reload
         $collapsible.on('shown.bs.collapse', function (e) {
 
-            fix_selector_height();
+            FixSelectorHeight();
+            // call resize in change view after tab switch
+            window.dispatchEvent(new Event('resize'));
 
             if (history.pushState) {
                 history.pushState(null, null, '#' + e.target.id);
@@ -109,7 +114,7 @@
         // Apply select2 to any select boxes that don't yet have it
         // and are not part of the django's empty-form inline
         const noSelect2 = '.empty-form select, .select2-hidden-accessible, .selectfilter, .selector-available select, .selector-chosen select';
-        $('select').not(noSelect2).select2({ width: '100%', theme: "classic" });
+        $('select').not(noSelect2).select2({ width: 'element' });
     }
 
     $(document).ready(function () {
@@ -122,6 +127,7 @@
 
         // Style the inline fieldset button
         $('.inline-related fieldset.module .add-row a').addClass('btn btn-sm btn-default float-right');
+        $('div.add-row>a').addClass('btn btn-sm btn-default float-right');
 
         // Ensure we preserve the tab the user was on using the url hash, even on page reload
         if ($tabs.length) { handleTabs($tabs); }

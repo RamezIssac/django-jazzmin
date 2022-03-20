@@ -1,9 +1,10 @@
+
 # Django jazzmin (Jazzy Admin)
 
 [![Docs](https://readthedocs.org/projects/django-jazzmin/badge/?version=latest)](https://django-jazzmin.readthedocs.io)
 ![PyPI download month](https://img.shields.io/pypi/dm/django-jazzmin.svg)
 [![PyPI version](https://badge.fury.io/py/django-jazzmin.svg)](https://pypi.python.org/pypi/django-jazzmin/)
-![Python versions](https://img.shields.io/badge/python-%3E%3D3.5-brightgreen)
+![Python versions](https://img.shields.io/badge/python-%3E%3D3.6-brightgreen)
 ![Django Versions](https://img.shields.io/badge/django-%3E%3D2-brightgreen)
 [![Coverage Status](https://coveralls.io/repos/github/farridav/django-jazzmin/badge.svg?branch=master)](https://coveralls.io/github/farridav/django-jazzmin?branch=master)
 
@@ -93,6 +94,8 @@ Live demo https://django-jazzmin.herokuapp.com/admin
 This was initially a Fork of https://github.com/wuyue92tree/django-adminlte-ui that we refactored so much we thought it
 deserved its own package, big thanks to @wuyue92tree for all of his initial hard work, we are still patching into that
 project were possible, but this project has taken a different direction.
+
+The javascript modal implementation uses some code from [django-admin-interface](https://github.com/fabiocaccamo/django-admin-interface/blob/master/admin_interface/static/admin/js/popup_response.js), so thanks to @fabiocaccamo for original work
 
 - Based on AdminLTE 3: https://adminlte.io/
 - Using Bootstrap 4: https://getbootstrap.com/

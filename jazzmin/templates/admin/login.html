@@ -1,7 +1,7 @@
 {% load i18n static jazzmin admin_urls %}
 {% get_current_language as LANGUAGE_CODE %}
 {% get_current_language_bidi as LANGUAGE_BIDI %}
-{% get_jazzmin_settings as jazzmin_settings %}
+{% get_jazzmin_settings request as jazzmin_settings %}
 {% get_jazzmin_ui_tweaks as jazzmin_ui %}
 
 <!DOCTYPE html>
@@ -24,7 +24,7 @@
         <link rel="stylesheet" href="{{ jazzmin_ui.theme.src }}" id="jazzmin-theme" />
     {% endif %}
 
-    {% if jazzmin_ui.dark_mode_theme.name %}
+    {% if jazzmin_ui.dark_mode_theme %}
         <link rel="stylesheet" href="{{ jazzmin_ui.dark_mode_theme.src }}" id="jazzmin-dark-mode-theme" media="(prefers-color-scheme: dark)"/>
     {% endif %}
 
@@ -37,8 +37,8 @@
     {% endif %}
 
     <!-- favicons -->
-    <link rel="shortcut icon" href="{% static jazzmin_settings.site_logo %}" type="image/png">
-    <link rel="icon" href="{% static jazzmin_settings.site_logo %}" sizes="32x32" type="image/png">
+    <link rel="shortcut icon" href="{% static jazzmin_settings.site_icon %}" type="image/png">
+    <link rel="icon" href="{% static jazzmin_settings.site_icon %}" sizes="32x32" type="image/png">
 
     <!-- Google Font: Source Sans Pro -->
     <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
@@ -50,7 +50,7 @@
 
 <div class="login-box">
     <div class="login-logo">
-        <h1>{{ jazzmin_settings.site_header }}</h1>
+        <h1><img src="{% static jazzmin_settings.site_logo %}" alt="{{ jazzmin_settings.site_header }}"></h1>
     </div>
 
     <div class="card">
@@ -58,6 +58,18 @@
             <p class="login-box-msg">{{ jazzmin_settings.welcome_sign }}</p>
             <form action="{{ app_path }}" method="post">
                 {% csrf_token %}
+                {% if user.is_authenticated %}
+                    <p class="errornote">
+                        <div class="callout callout-danger">
+                            <p>
+                                {% blocktrans trimmed %}
+                                    You are authenticated as {{ username }}, but are not authorized to
+                                    access this page. Would you like to login to a different account?
+                                {% endblocktrans %}
+                            </p>
+                        </div>
+                    </p>
+                {% endif %}
                 {% if form.errors %}
 
                     {% if form.username.errors %}

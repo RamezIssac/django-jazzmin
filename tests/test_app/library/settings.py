@@ -1,7 +1,8 @@
 import os
+from typing import Any, Dict
 
-from django.conf.global_settings import LANGUAGES as DJANGO_LANGUAGES
 import dj_database_url
+from django.conf.global_settings import LANGUAGES as DJANGO_LANGUAGES
 
 ###################
 # Django Settings #
@@ -17,6 +18,7 @@ ALLOWED_HOSTS = ["*"]
 INSTALLED_APPS = [
     # Keep this above 'django.contrib.admin'
     "jazzmin",
+    # Django apps
     "django.contrib.admin",
     "django.contrib.admindocs",
     "django.contrib.auth",
@@ -24,7 +26,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "import_export",
     # Our apps
     "{}library.books.apps.BooksConfig".format(PREFIX),
     "{}library.loans.apps.LoansConfig".format(PREFIX),
@@ -78,18 +79,10 @@ DATABASES = {
 }
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 LANGUAGE_CODE = "en"
@@ -108,6 +101,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 if DEBUG and not TEST:
     os.environ.setdefault("WERKZEUG_DEBUG_PIN", "off")
     INSTALLED_APPS.extend(["debug_toolbar", "django_extensions"])
@@ -121,20 +116,24 @@ if not DEBUG and not TEST:
 ########################
 # Third party settings #
 ########################
-JAZZMIN_SETTINGS = {
-    # title of the window
+JAZZMIN_SETTINGS: Dict[str, Any] = {
+    # title of the window (Will default to current_admin_site.site_title if absent or None)
     "site_title": "Library Admin",
-    # Title on the brand, and the login screen (19 chars max)
+    # Title on the brand, and login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
     "site_header": "Library",
-    # square logo to use for your site, must be present in static files, used for favicon and brand on top left
+    # Logo to use for your site, must be present in static files, used for brand on top left
     "site_logo": "books/img/logo.png",
+    # CSS classes that are applied to the logo
+    "site_logo_classes": None,
+    # Relative path to a favicon for your site, will default to site_logo if absent (ideally 32x32 px)
+    "site_icon": "books/img/icon.png",
     # Welcome text on the login screen
     "welcome_sign": "Welcome to the library",
     # Copyright on the footer
     "copyright": "Acme Library Ltd",
     # The model admin to search from the search bar, search bar omitted if excluded
     "search_model": "auth.User",
-    # Field name on user model that contains avatar image
+    # Field name on user model that contains avatar ImageField/URLField/Charfield or a callable that receives the user
     "user_avatar": None,
     ############
     # Top Menu #
@@ -144,11 +143,7 @@ JAZZMIN_SETTINGS = {
         # Url that gets reversed (Permissions can be added)
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
         # external url that opens in a new window (Permissions can be added)
-        {
-            "name": "Support",
-            "url": "https://github.com/farridav/django-jazzmin/issues",
-            "new_window": True,
-        },
+        {"name": "Support", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
         # model admin to link to (Permissions checked against model)
         {"model": "auth.User"},
         # App with dropdown menu to all its models pages (Permissions checked against models)
@@ -160,11 +155,7 @@ JAZZMIN_SETTINGS = {
     #############
     # Additional links to include in the user menu on the top right ('app' url type is not allowed)
     "usermenu_links": [
-        {
-            "name": "Support",
-            "url": "https://github.com/farridav/django-jazzmin/issues",
-            "new_window": True,
-        },
+        {"name": "Support", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
         {"model": "auth.user"},
     ],
     #############
@@ -188,11 +179,14 @@ JAZZMIN_SETTINGS = {
                 "url": "make_messages",
                 "icon": "fas fa-comments",
                 "permissions": ["loans.view_loan"],
-            }
+            },
+            {"name": "Custom View", "url": "admin:custom_view", "icon": "fas fa-box-open"},
         ]
     },
-    # Custom icons for side menu apps/models See https://fontawesome.com/icons?d=gallery&m=free
-    # for a list of icon classes
+    # Custom icons for side menu apps/models See the link below
+    # https://fontawesome.com/icons?d=gallery&m=free&v=5.0.0,5.0.1,5.0.10,5.0.11,5.0.12,5.0.13,5.0.2,5.0.3,5.0.4,5.0.5,5.0.6,5.0.7,5.0.8,5.0.9,5.1.0,
+    # 5.1.1,5.2.0,5.3.0,5.3.1,5.4.0,5.4.1,5.4.2,5.13.0,5.12.0,5.11.2,5.11.1,5.10.0,5.9.0,5.8.2,5.8.1,5.7.2,5.7.1,5.7.0,5.6.3,5.5.0,5.4.2
+    # for the full list of 5.13.0 free icon classes
     "icons": {
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",

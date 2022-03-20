@@ -6,14 +6,23 @@ full example, with some of the more complex items explained below that.
 ## Full example
 ```python
 JAZZMIN_SETTINGS = {
-    # title of the window
+    # title of the window (Will default to current_admin_site.site_title if absent or None)
     "site_title": "Library Admin",
 
-    # Title on the brand, and the login screen (19 chars max)
+    # Title on the login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
     "site_header": "Library",
 
-    # square logo to use for your site, must be present in static files, used for favicon and brand on top left
+    # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    "site_brand": "Library",
+
+    # Logo to use for your site, must be present in static files, used for brand on top left
     "site_logo": "books/img/logo.png",
+
+    # CSS classes that are applied to the logo above
+    "site_logo_classes": "img-circle",
+
+    # Relative path to a favicon for your site, will default to site_logo if absent (ideally 32x32 px)
+    "site_icon": None,
 
     # Welcome text on the login screen
     "welcome_sign": "Welcome to the library",
@@ -24,7 +33,7 @@ JAZZMIN_SETTINGS = {
     # The model admin to search from the search bar, search bar omitted if excluded
     "search_model": "auth.User",
 
-    # Field name on user model that contains avatar image
+    # Field name on user model that contains avatar ImageField/URLField/Charfield or a callable that receives the user
     "user_avatar": None,
 
     ############
@@ -86,8 +95,8 @@ JAZZMIN_SETTINGS = {
         }]
     },
 
-    # Custom icons for side menu apps/models See https://fontawesome.com/icons?d=gallery&m=free
-    # for a list of icon classes
+    # Custom icons for side menu apps/models See https://fontawesome.com/icons?d=gallery&m=free&v=5.0.0,5.0.1,5.0.10,5.0.11,5.0.12,5.0.13,5.0.2,5.0.3,5.0.4,5.0.5,5.0.6,5.0.7,5.0.8,5.0.9,5.1.0,5.1.1,5.2.0,5.3.0,5.3.1,5.4.0,5.4.1,5.4.2,5.13.0,5.12.0,5.11.2,5.11.1,5.10.0,5.9.0,5.8.2,5.8.1,5.7.2,5.7.1,5.7.0,5.6.3,5.5.0,5.4.2
+    # for the full list of 5.13.0 free icon classes
     "icons": {
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",
@@ -123,7 +132,7 @@ JAZZMIN_SETTINGS = {
     # - carousel
     "changeform_format": "horizontal_tabs",
     # override change forms on a per modeladmin basis
-    "changeform_format_overrides": {"auth.user": "collapsible", "auth.group": "vertical_tabs",},
+    "changeform_format_overrides": {"auth.user": "collapsible", "auth.group": "vertical_tabs"},
     # Add a language dropdown into the admin
     "language_chooser": True,
 }
@@ -201,7 +210,7 @@ Example:
             # url name e.g `admin:index`, relative urls e.g `/admin/index` or absolute urls e.g `https://domain.com/admin/index`
             "url": "make_messages",                 
             
-            # any font-awesome icon, see list here https://fontawesome.com/icons?d=gallery&m=free (optional)
+            # any font-awesome icon, see list here https://fontawesome.com/icons?d=gallery&m=free&v=5.0.0,5.0.1,5.0.10,5.0.11,5.0.12,5.0.13,5.0.2,5.0.3,5.0.4,5.0.5,5.0.6,5.0.7,5.0.8,5.0.9,5.1.0,5.1.1,5.2.0,5.3.0,5.3.1,5.4.0,5.4.1,5.4.2,5.13.0,5.12.0,5.11.2,5.11.1,5.10.0,5.9.0,5.8.2,5.8.1,5.7.2,5.7.1,5.7.0,5.6.3,5.5.0,5.4.2 (optional)
             "icon": "fas fa-comments",                  
             
             # a list of permissions the user must have to see this link (optional)
@@ -219,7 +228,7 @@ a dictionary mapping of model names to changeform templates e.g:
 
     "changeform_format": "horizontal_tabs",
     # override change forms on a per modeladmin basis
-    "changeform_format_overrides": {"auth.user": "collapsible", "auth.group": "vertical_tabs",},
+    "changeform_format_overrides": {"auth.user": "collapsible", "auth.group": "vertical_tabs"},
 
 Will use `horizontal_tabs` throughout the admin, but use the `collapsible` template on the user model admin, and 
 `vertical_tabs` on the group model admin.
@@ -259,11 +268,47 @@ Puts fieldsets and inlines into a bootstrap carousel, and allows paginaton with 
 
 ![Carousel](./img/changeform_carousel.png)
 
+## Ordering of page content
+If you want to order the sections within your pages, you can specify `jazzmin_section_order` on your model admin class e.g:
+
+```python
+@admin.register(Book)
+class BookAdmin(admin.ModelAdmin):
+    resource_class = BookResource
+    fieldsets = (
+        ("general", {"fields": ("title", "author", "library")}),
+        ("other", {"fields": ("genre", "summary", "isbn", "published_on")}),
+    )
+    inlines = (BookLoanInline,)
+
+    # Order the sections within the change form
+    jazzmin_section_order = ("book loans", "general", "other")
+```
+
+## Filter perfomance
+If your filter will contain a lot of options, like when you use M2M filter or it's a big filter itself, then rendering every option can hurt user perfomance. This is solved by providing `filter_input_length` dictionary with filter name as the key and the value will determine how much characters should be entered before rendering options.
+
+```python
+@admin.register(Book)
+class BookAdmin(admin.ModelAdmin):
+    resource_class = BookResource
+    fieldsets = (
+        ("general", {"fields": ("title", "author", "library")}),
+        ("other", {"fields": ("genre", "summary", "isbn", "published_on")}),
+    )
+    list_filter = ("title",)
+
+    # Render filtered options only after 5 characters were entered
+    filter_input_length = {
+        "title": 5,
+    }
+```
+
 ## Language Chooser
 You can enable a language chooser dropdown using `"language_chooser": True` in your `JAZZMIN_SETTINGS`, we mainly use this for 
 assisting with translations, but it could be of use to some people in their admin site.
 
-To make proper use of this, please ensure you have internationalisation setup properly, See https://docs.djangoproject.com/en/3.1/topics/i18n/translation/
+To make proper use of this, please ensure you have internationalisation setup properly, See [https://docs.djangoproject.com/en/3.1/topics/i18n/translation/](https://docs.djangoproject.com/en/3.1/topics/i18n/translation/)
 
 Namely:
 
@@ -279,7 +324,7 @@ for a practical example.
 
 ## Related Modal
 Render django related popups inside a modal using `"related_modal_active": True` instead of the old popup window, 
-defaults to `True`
+defaults to `False`
 
 ![Related Modal](./img/related_modal_bootstrap.png)
 
@@ -291,7 +336,7 @@ e.g [app/templates/admin/app_name/model_name/submit_line.html](https://github.co
 ```djangotemplate
 {# extends "admin/submit_line.html" #}
 
-{% block extra-actions %}
+{# block extra-actions #}
 
 {# For a simple link #}
 <div class="form-group">
@@ -302,7 +347,7 @@ e.g [app/templates/admin/app_name/model_name/submit_line.html](https://github.co
 <div class="form-group">
     <input type="submit" class="btn btn-outline-info form-control" value="SomeAction" name="_your_action">
 </div>
-{% endblock %}
+{# endblock #}
 ```
 
 If you are adding a button that needs processing with the form, e.g (Save and send) you will need to add the
