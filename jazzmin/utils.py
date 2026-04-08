@@ -1,21 +1,22 @@
 import logging
-from typing import List, Union, Dict, Set, Callable, Any
+from typing import Any, Callable, Dict, List, Set, TypeVar, Union
 from urllib.parse import urlencode
 
 from django.apps import apps
 from django.contrib.admin import ListFilter
 from django.contrib.admin.helpers import AdminForm
 from django.contrib.auth.models import AbstractUser
-from django.db.models.base import ModelBase, Model
+from django.db.models.base import Model, ModelBase
 from django.db.models.options import Options
 from django.utils.translation import gettext
 
 from jazzmin.compat import NoReverseMatch, reverse
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
-def order_with_respect_to(original: List, reference: List, getter: Callable = lambda x: x) -> List:
+def order_with_respect_to(original: List[T], reference: List[Any], getter: Callable[[T], Any] = lambda x: x) -> List[T]:
     """
     Order a list based on the location of items in the reference list, optionally, use a getter to pull values out of
     the first list
@@ -40,8 +41,7 @@ def get_admin_url(instance: Any, admin_site: str = "admin", from_app: bool = Fal
     url = "#"
 
     try:
-
-        if type(instance) == str:
+        if isinstance(instance, str):
             app_label, model_name = instance.split(".")
             model_name = model_name.lower()
             url = reverse(
@@ -74,11 +74,11 @@ def get_admin_url(instance: Any, admin_site: str = "admin", from_app: bool = Fal
     if kwargs:
         url += "?{params}".format(params=urlencode(kwargs))
 
-    return url
+    return str(url)
 
 
 def get_filter_id(spec: ListFilter) -> str:
-    return getattr(spec, "field_path", getattr(spec, "parameter_name", spec.title))
+    return str(getattr(spec, "field_path", getattr(spec, "parameter_name", spec.title)))
 
 
 def get_custom_url(url: str, admin_site: str = "admin") -> str:
@@ -92,12 +92,11 @@ def get_custom_url(url: str, admin_site: str = "admin") -> str:
     if "/" in url:
         return url
     try:
-        url = reverse(url.lower(), current_app=admin_site)
+        resolved = reverse(url.lower(), current_app=admin_site)
+        return str(resolved)
     except NoReverseMatch:
         logger.warning("Couldnt reverse {url}".format(url=url))
-        url = "#" + url
-
-    return url
+        return "#" + url
 
 
 def get_model_meta(model_str: str) -> Union[None, Options]:
@@ -112,7 +111,7 @@ def get_model_meta(model_str: str) -> Union[None, Options]:
         return None
 
 
-def get_app_admin_urls(app: str, admin_site: str = "admin") -> List[Dict]:
+def get_app_admin_urls(app: str, admin_site: str = "admin") -> List[Dict[str, Any]]:
     """
     For the given app string, get links to all the app models admin views
     """
@@ -153,8 +152,12 @@ def get_view_permissions(user: AbstractUser) -> Set[str]:
 
 
 def make_menu(
-    user: AbstractUser, links: List[Dict], options: Dict, allow_appmenus: bool = True, admin_site: str = "admin"
-) -> List[Dict]:
+    user: AbstractUser,
+    links: List[Dict[str, Any]],
+    options: Dict[str, Any],
+    allow_appmenus: bool = True,
+    admin_site: str = "admin",
+) -> List[Dict[str, Any]]:
     """
     Make a menu from a list of user supplied links
     """
@@ -165,7 +168,6 @@ def make_menu(
 
     menu = []
     for link in links:
-
         perm_matches = []
         for perm in link.get("permissions", []):
             perm_matches.append(user.has_perm(perm))
@@ -232,10 +234,16 @@ def has_fieldsets_check(adminform: AdminForm) -> bool:
     return True
 
 
-def attr(**kwargs) -> Callable:
-    def decorator(func: Callable):
+def attr(**kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Attach attributes to a function via a decorator."""
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         for key, value in kwargs.items():
             setattr(func, key, value)
         return func
 
     return decorator
+
+
+def get_installed_apps() -> List[str]:
+    return [app_config.label for app_config in apps.get_app_configs()]

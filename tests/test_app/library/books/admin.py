@@ -4,6 +4,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.utils.timesince import timesince
+
 from jazzmin.utils import attr
 
 from ..loans.admin import BookLoanInline
@@ -59,9 +60,7 @@ class LogEntryAdmin(admin.ModelAdmin):
 
     def object(self, obj):
         url = obj.get_admin_url()
-        return format_html(
-            '<a href="{url}">{obj} [{model}]</a>'.format(url=url, obj=obj.object_repr, model=obj.content_type.model)
-        )
+        return format_html('<a href="{}">{} [{}]</a>', url, obj.object_repr, obj.content_type.model)
 
     @attr(admin_order_field="action_time")
     def modified(self, obj):

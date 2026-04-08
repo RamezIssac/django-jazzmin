@@ -1,5 +1,8 @@
+import re
+
 import django
 import pytest
+
 from jazzmin.compat import reverse
 
 from .test_app.library.books.models import Book
@@ -17,7 +20,10 @@ def test_login(client, admin_user):
     templates_used = [t.name for t in response.templates]
 
     assert response.status_code == 200
-    assert templates_used == ["admin/login.html"]
+    assert templates_used == [
+        "admin/login.html",
+        "registration/base.html",
+    ]
 
     response = client.post(
         url + "?next=/admin/",
@@ -36,11 +42,79 @@ def test_logout(admin_client):
     """
     url = reverse("admin:logout")
 
-    response = admin_client.get(url)
+    response = admin_client.post(url)
     templates_used = [t.name for t in response.templates]
 
     assert response.status_code == 200
-    assert templates_used == ["registration/logged_out.html"]
+    assert templates_used == [
+        "registration/logged_out.html",
+        "registration/base.html",
+    ]
+
+
+@pytest.mark.django_db
+def test_reset_password(client, admin_user):
+    """
+    We can render the password reset views
+    """
+    # Step 1: Password reset form
+    url = reverse("admin_password_reset")
+
+    response = client.get(url)
+    templates_used = [t.name for t in response.templates]
+
+    assert response.status_code == 200
+    assert templates_used == [
+        "registration/password_reset_form.html",
+        "registration/base.html",
+    ]
+
+    # Step 2: Password reset done
+    response = client.post(
+        url,
+        data={"email": admin_user.email},
+        follow=True,
+    )
+    templates_used = [t.name for t in response.templates]
+
+    assert response.status_code == 200
+    assert response.resolver_match.url_name == "password_reset_done"
+    assert templates_used == [
+        "registration/password_reset_done.html",
+        "registration/base.html",
+    ]
+    assert "We’ve emailed you instructions for setting your password" in response.content.decode()
+
+    # Get password reset link from reset email
+    email = django.core.mail.outbox[0]
+    url = re.search(r"https?://[^/]*(/.*reset/\S*)", email.body).group(1)
+
+    # Step 3: Password reset confirm
+    response = client.get(url, follow=True)
+    templates_used = [t.name for t in response.templates]
+
+    assert response.status_code == 200
+    assert response.resolver_match.url_name == "password_reset_confirm"
+    assert templates_used == [
+        "registration/password_reset_confirm.html",
+        "registration/base.html",
+    ]
+
+    # Step 4: Password reset complete
+    response = client.post(
+        response.request["PATH_INFO"],
+        data={"username": admin_user.username, "new_password1": "new_password", "new_password2": "new_password"},
+        follow=True,
+    )
+    templates_used = [t.name for t in response.templates]
+
+    assert response.status_code == 200
+    assert response.resolver_match.url_name == "password_reset_complete"
+    assert templates_used == [
+        "registration/password_reset_complete.html",
+        "registration/base.html",
+    ]
+    assert "Your password has been set." in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -65,11 +139,9 @@ def test_password_change(admin_client):
         "django/forms/widgets/password.html",
         "django/forms/widgets/input.html",
         "django/forms/widgets/attrs.html",
-        "jazzmin/includes/ui_builder_panel.html",
+        "django/forms/errors/list/default.html",
+        "django/forms/errors/list/ul.html",
     }
-
-    if django.VERSION[0] == 4:
-        expected_templates_used.update({"django/forms/errors/list/default.html", "django/forms/errors/list/ul.html"})
 
     assert response.status_code == 200
     assert set(templates_used) == expected_templates_used
@@ -86,7 +158,6 @@ def test_password_change(admin_client):
         "registration/password_change_done.html",
         "admin/base.html",
         "admin/base_site.html",
-        "jazzmin/includes/ui_builder_panel.html",
     }
 
 
@@ -105,7 +176,6 @@ def test_dashboard(admin_client):
         "admin/index.html",
         "admin/base_site.html",
         "admin/base.html",
-        "jazzmin/includes/ui_builder_panel.html",
     ]
 
 
@@ -135,10 +205,10 @@ def test_detail(admin_client):
         "admin/widgets/foreign_key_raw_id.html": 1,
         "admin/widgets/related_widget_wrapper.html": 4,
         "admin/widgets/split_datetime.html": 2,
-        "django/forms/widgets/attrs.html": 47,
+        "django/forms/widgets/attrs.html": 47 if django.VERSION < (5, 1) else 49,
         "django/forms/widgets/date.html": 5,
-        "django/forms/widgets/hidden.html": 6,
-        "django/forms/widgets/input.html": 19,
+        "django/forms/widgets/hidden.html": 6 if django.VERSION < (5, 1) else 8,
+        "django/forms/widgets/input.html": 19 if django.VERSION < (5, 1) else 21,
         "django/forms/widgets/number.html": 1,
         "django/forms/widgets/select.html": 6,
         "django/forms/widgets/select_option.html": 21,
@@ -146,18 +216,11 @@ def test_detail(admin_client):
         "django/forms/widgets/textarea.html": 1,
         "django/forms/widgets/time.html": 2,
         "jazzmin/includes/horizontal_tabs.html": 1,
-        "jazzmin/includes/ui_builder_panel.html": 1,
+        "django/forms/div.html": 1,
+        "django/forms/errors/list/default.html": 2,
+        "admin/widgets/date.html": 3,
+        "django/forms/errors/list/ul.html": 56,
     }
-
-    if django.VERSION[0] == 4:
-        expected_render_counts.update(
-            {
-                "django/forms/default.html": 1,
-                "django/forms/errors/list/default.html": 1,
-                "django/forms/errors/list/ul.html": 55,
-                "django/forms/table.html": 1,
-            }
-        )
 
     # The number of times each template was rendered
     assert render_counts == expected_render_counts
@@ -185,18 +248,11 @@ def test_detail(admin_client):
         "django/forms/widgets/textarea.html",
         "django/forms/widgets/time.html",
         "jazzmin/includes/horizontal_tabs.html",
-        "jazzmin/includes/ui_builder_panel.html",
+        "django/forms/div.html",
+        "django/forms/errors/list/default.html",
+        "admin/widgets/date.html",
+        "django/forms/errors/list/ul.html",
     }
-
-    if django.VERSION[0] == 4:
-        expected_templates_used.update(
-            {
-                "django/forms/default.html",
-                "django/forms/errors/list/default.html",
-                "django/forms/errors/list/ul.html",
-                "django/forms/table.html",
-            }
-        )
 
     # The templates that were used
     assert set(templates_used) == expected_templates_used
@@ -228,7 +284,6 @@ def test_list(admin_client):
         "admin/change_list_results.html": 1,
         "admin/date_hierarchy.html": 1,
         "admin/pagination.html": 1,
-        "admin/search_form.html": 1,
         "django/forms/widgets/attrs.html": 27,
         "django/forms/widgets/checkbox.html": 5,
         "django/forms/widgets/hidden.html": 11,
@@ -236,18 +291,10 @@ def test_list(admin_client):
         "django/forms/widgets/select.html": 2,
         "django/forms/widgets/select_option.html": 4,
         "django/forms/widgets/text.html": 5,
-        "jazzmin/includes/ui_builder_panel.html": 1,
+        "django/forms/div.html": 1,
+        "django/forms/errors/list/default.html": 6,
+        "django/forms/errors/list/ul.html": 6,
     }
-
-    if django.VERSION[0] == 4:
-        expected_render_counts.update(
-            {
-                "django/forms/default.html": 1,
-                "django/forms/errors/list/default.html": 5,
-                "django/forms/errors/list/ul.html": 5,
-                "django/forms/table.html": 1,
-            }
-        )
 
     # The number of times each template was rendered
     assert render_counts == expected_render_counts
@@ -261,7 +308,6 @@ def test_list(admin_client):
         "admin/change_list_results.html",
         "admin/date_hierarchy.html",
         "admin/pagination.html",
-        "admin/search_form.html",
         "django/forms/widgets/attrs.html",
         "django/forms/widgets/checkbox.html",
         "django/forms/widgets/hidden.html",
@@ -269,18 +315,10 @@ def test_list(admin_client):
         "django/forms/widgets/select.html",
         "django/forms/widgets/select_option.html",
         "django/forms/widgets/text.html",
-        "jazzmin/includes/ui_builder_panel.html",
+        "django/forms/div.html",
+        "django/forms/errors/list/default.html",
+        "django/forms/errors/list/ul.html",
     }
-
-    if django.VERSION[0] == 4:
-        expected_templates.update(
-            {
-                "django/forms/default.html",
-                "django/forms/errors/list/default.html",
-                "django/forms/errors/list/ul.html",
-                "django/forms/table.html",
-            }
-        )
 
     # The templates that were used
     assert set(templates_used) == expected_templates
@@ -305,7 +343,6 @@ def test_history(admin_client):
         "admin/object_history.html": 1,
         "admin/base.html": 1,
         "admin/base_site.html": 1,
-        "jazzmin/includes/ui_builder_panel.html": 1,
     }
 
     # The templates that were used
@@ -313,7 +350,6 @@ def test_history(admin_client):
         "admin/object_history.html",
         "admin/base.html",
         "admin/base_site.html",
-        "jazzmin/includes/ui_builder_panel.html",
     }
 
 
@@ -337,7 +373,6 @@ def test_delete(admin_client):
         "admin/base_site.html": 1,
         "admin/base.html": 1,
         "admin/includes/object_delete_summary.html": 1,
-        "jazzmin/includes/ui_builder_panel.html": 1,
     }
 
     # The templates that were used
@@ -346,7 +381,6 @@ def test_delete(admin_client):
         "admin/base_site.html",
         "admin/base.html",
         "admin/includes/object_delete_summary.html",
-        "jazzmin/includes/ui_builder_panel.html",
     }
 
     response = admin_client.post(url, data={"post": "yes"}, follow=True)

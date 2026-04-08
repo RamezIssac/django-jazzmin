@@ -113,8 +113,8 @@
     function applySelect2() {
         // Apply select2 to any select boxes that don't yet have it
         // and are not part of the django's empty-form inline
-        const noSelect2 = '.empty-form select, .select2-hidden-accessible, .selectfilter, .selector-available select, .selector-chosen select';
-        $('select').not(noSelect2).select2({ width: 'element' });
+        const noSelect2 = '.empty-form select, .select2-hidden-accessible, .selectfilter, .selector-available select, .selector-chosen select, select[data-autocomplete-light-function=select2]';
+        $('select').not(noSelect2).select2({ width: '100%' });
     }
 
     $(document).ready(function () {
@@ -126,15 +126,23 @@
         $('.related-lookup').append('<i class="fa fa-search"></i>');
 
         // Style the inline fieldset button
-        $('.inline-related fieldset.module .add-row a').addClass('btn btn-sm btn-default float-right');
-        $('div.add-row>a').addClass('btn btn-sm btn-default float-right');
+        $('.inline-related fieldset.module .add-row a').addClass('btn btn-sm btn-default float-end');
+        $('div.add-row>a').addClass('btn btn-sm btn-default float-end');
 
         // Ensure we preserve the tab the user was on using the url hash, even on page reload
         if ($tabs.length) { handleTabs($tabs); }
         else if ($carousel.length) { handleCarousel($carousel); }
         else if ($collapsible.length) { handleCollapsible($collapsible); }
 
-        applySelect2()
+        applySelect2();
+
+        $('body').on('change', '.related-widget-wrapper select', function(e) {
+            const event = $.Event('django:update-related');
+            $(this).trigger(event);
+            if (!event.isDefaultPrevented() && typeof(window.updateRelatedObjectLinks) !== 'undefined') {
+                updateRelatedObjectLinks(this);
+            }
+        });
     });
 
     // Apply select2 to all select boxes when new inline row is created

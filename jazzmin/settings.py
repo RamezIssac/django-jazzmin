@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 from django.conf import settings
 from django.templatetags.static import static
@@ -18,6 +18,10 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "site_brand": None,
     # Relative path to logo for your site, used for brand on top left (must be present in static files)
     "site_logo": "vendor/adminlte/img/AdminLTELogo.png",
+    # Relative path to logo for your site, used for login logo (must be present in static files. Defaults to site_logo)
+    "login_logo": None,
+    # Logo to use when data-bs-theme is dark (must be present in static files. Defaults to login_logo)
+    "login_logo_dark": None,
     # CSS classes that are applied to the logo
     "site_logo_classes": "img-circle",
     # Relative path to a favicon for your site, will default to site_logo if absent (ideally 32x32 px)
@@ -53,11 +57,13 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "hide_models": [],
     # List of apps to base side menu ordering off of
     "order_with_respect_to": [],
-    # Custom links to append to side menu app groups, keyed on app name
+    # Custom links to append to side menu app groups, keyed on lower case app label
+    # or makes a new group if the given app label doesnt exist in installed apps
     "custom_links": {},
     # Custom icons for side menu apps/models See the link below
     # https://fontawesome.com/icons?d=gallery&m=free&v=5.0.0,5.0.1,5.0.10,5.0.11,5.0.12,5.0.13,5.0.2,5.0.3,5.0.4,5.0.5,5.0.6,5.0.7,5.0.8,5.0.9,5.1.0,
-    # 5.1.1,5.2.0,5.3.0,5.3.1,5.4.0,5.4.1,5.4.2,5.13.0,5.12.0,5.11.2,5.11.1,5.10.0,5.9.0,5.8.2,5.8.1,5.7.2,5.7.1,5.7.0,5.6.3,5.5.0,5.4.2
+    # 5.1.1,5.2.0,5.3.0,5.3.1,5.4.0,5.4.1,5.4.2,5.13.0,5.12.0,
+    # 5.11.2,5.11.1,5.10.0,5.9.0,5.8.2,5.8.1,5.7.2,5.7.1,5.7.0,5.6.3,5.5.0,5.4.2
     # for the full list of 5.13.0 free icon classes
     "icons": {"auth": "fas fa-users-cog", "auth.user": "fas fa-user", "auth.Group": "fas fa-users"},
     # Icons that are used when one is not manually specified
@@ -78,6 +84,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "use_google_fonts_cdn": True,
     # Whether to show the UI customizer on the sidebar
     "show_ui_builder": False,
+    # Whether to show the theme chooser dropdown in the top navbar
+    "show_theme_chooser": False,
     ###############
     # Change view #
     ###############
@@ -140,22 +148,26 @@ DEFAULT_UI_TWEAKS: Dict[str, Any] = {
     "sidebar_nav_flat_style": False,
     # Bootstrap theme to use (default, or from bootswatch, see THEMES below)
     "theme": "default",
-    # Theme to use instead if the user has opted for dark mode (e.g darkly/cyborg/slate/solar/superhero)
-    "dark_mode_theme": None,
+    # Default color scheme: "light", "dark", or "auto" (follow prefers-color-scheme).
+    # Any theme can be shown in light or dark via data-bs-theme on the html element.
+    "default_theme_mode": "light",
     # The classes/styles to use with buttons
     "button_classes": {
-        "primary": "btn-outline-primary",
-        "secondary": "btn-outline-secondary",
-        "info": "btn-outline-info",
-        "warning": "btn-outline-warning",
-        "danger": "btn-outline-danger",
-        "success": "btn-outline-success",
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
     },
 }
 
+# default brite cerulean cosmo cyborg darkly flatly journal litera lumen lux materia minty morph pulse quartz sandstone
+#  simplex sketchy slate solar spacelab superhero united vapor yeti zephyr
 THEMES = {
     # light themes
     "default": "vendor/bootswatch/default/bootstrap.min.css",
+    "brite": "vendor/bootswatch/brite/bootstrap.min.css",
     "cerulean": "vendor/bootswatch/cerulean/bootstrap.min.css",
     "cosmo": "vendor/bootswatch/cosmo/bootstrap.min.css",
     "flatly": "vendor/bootswatch/flatly/bootstrap.min.css",
@@ -165,6 +177,7 @@ THEMES = {
     "lux": "vendor/bootswatch/lux/bootstrap.min.css",
     "materia": "vendor/bootswatch/materia/bootstrap.min.css",
     "minty": "vendor/bootswatch/minty/bootstrap.min.css",
+    "morph": "vendor/bootswatch/morph/bootstrap.min.css",
     "pulse": "vendor/bootswatch/pulse/bootstrap.min.css",
     "sandstone": "vendor/bootswatch/sandstone/bootstrap.min.css",
     "simplex": "vendor/bootswatch/simplex/bootstrap.min.css",
@@ -172,15 +185,14 @@ THEMES = {
     "spacelab": "vendor/bootswatch/spacelab/bootstrap.min.css",
     "united": "vendor/bootswatch/united/bootstrap.min.css",
     "yeti": "vendor/bootswatch/yeti/bootstrap.min.css",
-    # dark themes
+    "zephyr": "vendor/bootswatch/zephyr/bootstrap.min.css",
     "darkly": "vendor/bootswatch/darkly/bootstrap.min.css",
     "cyborg": "vendor/bootswatch/cyborg/bootstrap.min.css",
     "slate": "vendor/bootswatch/slate/bootstrap.min.css",
     "solar": "vendor/bootswatch/solar/bootstrap.min.css",
     "superhero": "vendor/bootswatch/superhero/bootstrap.min.css",
+    "vapor": "vendor/bootswatch/vapor/bootstrap.min.css",
 }
-
-DARK_THEMES = ("darkly", "cyborg", "slate", "solar", "superhero")
 
 CHANGEFORM_TEMPLATES = {
     "single": "jazzmin/includes/single.html",
@@ -191,37 +203,45 @@ CHANGEFORM_TEMPLATES = {
 }
 
 
-def get_search_model_string(jazzmin_settings: Dict) -> str:
+def get_search_model_string(search_model: str) -> str:
     """
     Get a search model string for reversing an admin url.
 
     Ensure the model name is lower cased but remain the app name untouched.
     """
 
-    app, model_name = jazzmin_settings["search_model"].split(".")
+    app, model_name = search_model.split(".")
     return "{app}.{model_name}".format(app=app, model_name=model_name.lower())
 
 
-def get_settings() -> Dict:
+def get_settings() -> Dict[str, Any]:
     jazzmin_settings = copy.deepcopy(DEFAULT_SETTINGS)
     user_settings = {x: y for x, y in getattr(settings, "JAZZMIN_SETTINGS", {}).items() if y is not None}
     jazzmin_settings.update(user_settings)
 
-    # Extract search url from search model
+    # Extract search model configuration from search_model setting
     if jazzmin_settings["search_model"]:
-        jazzmin_settings["search_url"] = get_admin_url(get_search_model_string(jazzmin_settings))
-        model_meta = get_model_meta(jazzmin_settings["search_model"])
-        if model_meta:
-            jazzmin_settings["search_name"] = model_meta.verbose_name_plural.title()
-        else:
-            jazzmin_settings["search_name"] = jazzmin_settings["search_model"].split(".")[-1] + "s"
+        if not isinstance(jazzmin_settings["search_model"], list):
+            jazzmin_settings["search_model"] = [jazzmin_settings["search_model"]]
+
+        jazzmin_settings["search_models_parsed"] = []
+        for search_model in jazzmin_settings["search_model"]:
+            jazzmin_search_model = {}
+            jazzmin_search_model["search_url"] = get_admin_url(get_search_model_string(search_model))
+
+            model_meta = get_model_meta(search_model)
+            if model_meta:
+                jazzmin_search_model["search_name"] = model_meta.verbose_name_plural.title()
+            else:
+                jazzmin_search_model["search_name"] = search_model.split(".")[-1] + "s"
+            jazzmin_settings["search_models_parsed"].append(jazzmin_search_model)
 
     # Deal with single strings in hide_apps/hide_models and make sure we lower case 'em
-    if type(jazzmin_settings["hide_apps"]) == str:
+    if isinstance(jazzmin_settings["hide_apps"], str):
         jazzmin_settings["hide_apps"] = [jazzmin_settings["hide_apps"]]
     jazzmin_settings["hide_apps"] = [x.lower() for x in jazzmin_settings["hide_apps"]]
 
-    if type(jazzmin_settings["hide_models"]) == str:
+    if isinstance(jazzmin_settings["hide_models"], str):
         jazzmin_settings["hide_models"] = [jazzmin_settings["hide_models"]]
     jazzmin_settings["hide_models"] = [x.lower() for x in jazzmin_settings["hide_models"]]
 
@@ -231,6 +251,12 @@ def get_settings() -> Dict:
     # Default the site icon using the site logo
     jazzmin_settings["site_icon"] = jazzmin_settings["site_icon"] or jazzmin_settings["site_logo"]
 
+    # Default the login logo using the site logo
+    jazzmin_settings["login_logo"] = jazzmin_settings["login_logo"] or jazzmin_settings["site_logo"]
+
+    # Default the login logo dark using the login logo
+    jazzmin_settings["login_logo_dark"] = jazzmin_settings["login_logo_dark"] or jazzmin_settings["login_logo"]
+
     # ensure all model names are lower cased
     jazzmin_settings["changeform_format_overrides"] = {
         x.lower(): y.lower() for x, y in jazzmin_settings.get("changeform_format_overrides", {}).items()
@@ -239,10 +265,23 @@ def get_settings() -> Dict:
     return jazzmin_settings
 
 
-def get_ui_tweaks() -> Dict:
+def get_ui_tweaks() -> Dict[str, Any]:
     raw_tweaks = copy.deepcopy(DEFAULT_UI_TWEAKS)
-    raw_tweaks.update(getattr(settings, "JAZZMIN_UI_TWEAKS", {}))
+    user_tweaks = getattr(settings, "JAZZMIN_UI_TWEAKS", {})
+    raw_tweaks.update(user_tweaks)
     tweaks = {x: y for x, y in raw_tweaks.items() if y not in (None, "", False)}
+
+    # Backward compatibility: dark_mode_theme is removed; use default_theme_mode instead
+    if "dark_mode_theme" in user_tweaks and "default_theme_mode" not in user_tweaks:
+        raw_tweaks["default_theme_mode"] = "auto"
+        tweaks["default_theme_mode"] = "auto"
+        logger.warning(
+            "JAZZMIN_UI_TWEAKS['dark_mode_theme'] is deprecated and ignored. "
+            "Use default_theme_mode='auto' (or 'light'/'dark') instead. "
+            "All themes now support light/dark via data-bs-theme."
+        )
+    raw_tweaks.pop("dark_mode_theme", None)
+    tweaks.pop("dark_mode_theme", None)
 
     # These options dont work well together
     if tweaks.get("layout_boxed"):
@@ -280,18 +319,17 @@ def get_ui_tweaks() -> Dict:
         logger.warning("{} not found in {}, using default".format(theme, THEMES.keys()))
         theme = "default"
 
-    dark_mode_theme = tweaks.get("dark_mode_theme", None)
-    if dark_mode_theme and dark_mode_theme not in DARK_THEMES:
-        logger.warning("{} is not a dark theme, using darkly".format(dark_mode_theme))
-        dark_mode_theme = "darkly"
+    default_theme_mode = tweaks.get("default_theme_mode", "light")
+    if default_theme_mode not in ("light", "dark", "auto"):
+        logger.warning("default_theme_mode must be light, dark, or auto; using light")
+        default_theme_mode = "light"
 
     theme_body_classes = " theme-{}".format(theme)
-    if theme in DARK_THEMES:
-        theme_body_classes += " dark-mode"
 
     ret = {
         "raw": raw_tweaks,
         "theme": {"name": theme, "src": static(THEMES[theme])},
+        "default_theme_mode": default_theme_mode,
         "sidebar_classes": classes("sidebar", "sidebar_disable_expand"),
         "navbar_classes": classes("navbar", "no_navbar_border", "navbar_small_text"),
         "body_classes": classes(
@@ -309,9 +347,7 @@ def get_ui_tweaks() -> Dict:
         "brand_classes": classes("brand_small_text", "brand_colour"),
         "footer_classes": classes("footer_small_text"),
         "button_classes": tweaks["button_classes"],
+        "theme_list": list(THEMES.keys()),
     }
-
-    if dark_mode_theme:
-        ret["dark_mode_theme"] = {"name": dark_mode_theme, "src": static(THEMES[dark_mode_theme])}
 
     return ret

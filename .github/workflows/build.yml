@@ -2,9 +2,9 @@
 name: Build
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
   build:
@@ -12,29 +12,30 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, 3.10.1]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     env:
       COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: "pip"
 
-      - name: Install dependencies
-        run: python -m pip install --upgrade pip tox tox-gh-actions
+      - name: Install uv
+        run: pip install uv
 
-      - name: Run tests
-        run: tox
+      - name: Run checks and tests
+        run: |
+          make deps
+          make check
+          make test
 
-      - name: cache deps
-        uses: actions/cache@v1
-        with:
-          path: ~/.tox
-          key: deps-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: deps-${{ hashFiles('**/pyproject.toml') }}
+      - name: Upload coverage to Coveralls
+        if: matrix.python-version == '3.12'
+        run: uv run coveralls
